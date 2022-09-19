@@ -1,4 +1,4 @@
-module github.com/OpenIoTHub/aliddns
+module github.com/incloon/aliddns
 
 go 1.15
 

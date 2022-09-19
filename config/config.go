@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"github.com/OpenIoTHub/aliddns/models"
+	"github.com/incloon/aliddns/models"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
@@ -20,6 +20,7 @@ var ConfigModel = &models.ConfigModel{
 	SubDomainName:       "*www",
 	CheckUpdateInterval: 30,
 	Protocol:            "all",
+	NetworkAdapter:      "",
 }
 
 //将配置写入指定的路径的文件
@@ -46,14 +47,14 @@ func InitConfigFile() {
 		fmt.Println("config created")
 		return
 	}
-	log.Fatalln("写入配置文件模板出错，请检查本程序是否具有写入权限！或者手动创建配置文件。")
+	log.Fatalln("Write config file error, Please check if the program has write permission! Or create a configuration file manually.")
 }
 
 var SupportedProtocols = [3]string{"ipv4", "ipv6", "all"}
 
 func UseConfigFile() {
 	//配置文件存在
-	log.Println("使用的配置文件位置：", ConfigFilePath)
+	log.Println("config file path: ", ConfigFilePath)
 	content, err := ioutil.ReadFile(ConfigFilePath)
 	if err != nil {
 		log.Fatalln(err.Error())
@@ -71,7 +72,7 @@ func UseConfigFile() {
 			return
 		}
 	}
-	log.Fatalf("不支援的协议 '%s'；目前支援 ipv4，ipv6 或 all\n", ConfigModel.Protocol)
+	log.Fatalf("Not support protocol type '%s'. Available values : [ipv4, ipv6, all]\n", ConfigModel.Protocol)
 	return
 }
 

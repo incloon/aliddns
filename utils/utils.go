@@ -1,14 +1,13 @@
 package utils
 
 import (
-	"github.com/OpenIoTHub/aliddns/config"
+	"github.com/incloon/aliddns/config"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"regexp"
 	"strings"
 )
 
@@ -47,23 +46,24 @@ func GetMyPublicIpv4() string {
 	for _, url := range Ipv4APIUrls {
 		resp, err := http.Get(url)
 		if err != nil {
-			log.Printf("get public ipv4 err：%s", err)
+			log.Printf("get public ipv4 err: %s", err)
 			continue
 		}
 		bytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("get public ipv4 err：%s", err)
+			log.Printf("get public ipv4 err: %s", err)
 			_ = resp.Body.Close()
 			continue
 		}
 		ipv4 := strings.Replace(string(bytes), "\n", "", -1)
 		ip := net.ParseIP(ipv4)
 		if ip != nil {
-			log.Println("got ipv4 addr:", ip.String())
+			log.Println("got public ipv4 addr: ", ip.String())
 			_ = resp.Body.Close()
 			return ip.String()
 		}
 	}
+	log.Println("fail to fetch ipv4!")
 	return ""
 }
 
@@ -71,42 +71,73 @@ func GetMyPublicIpv6() string {
 	for _, url := range Ipv6APIUrls {
 		resp, err := http.Get(url)
 		if err != nil {
-			log.Printf("get public ipv6 err：%s", err)
+			log.Printf("get public ipv6 err: %s", err)
 			continue
 		}
-		// 读取 IPv6
 		bytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("get public ipv6 err：%s", err)
+			log.Printf("get public ipv6 err: %s", err)
 			_ = resp.Body.Close()
 			continue
 		}
-		// 删除 document.write(xxx) (如有)
 		tmp := strings.Replace(string(bytes), "document.write('", "", -1)
 		tmp = strings.Replace(tmp, "');", "", -1)
 		ipv6 := strings.Replace(tmp, "\n", "", -1)
 		ip := net.ParseIP(ipv6)
 		if ip != nil {
-			log.Println("got ipv6 addr:", ip.String())
+			log.Println("got public ipv6 addr: ", ip.String())
 			_ = resp.Body.Close()
 			return ip.String()
 		}
 	}
+	log.Println("fail to fetch ipv6!")
 	return ""
 }
 
-//TODO Test
-func GetMyIPV6ByLocal() string {
-	s, err := net.InterfaceAddrs()
+func GetNetworkAdapterAddr(name string) []net.Addr {
+	inter, err := net.InterfaceByName(name)
 	if err != nil {
-		return ""
+		panic(err)
 	}
-	for _, a := range s {
-		i := regexp.MustCompile(`(\w+:){7}\w+`).FindString(a.String())
-		if strings.Count(i, ":") == 7 {
-			return i
+	// 判断网卡是否开启，过滤本地环回接口
+	if inter.Flags&net.FlagUp == 0{
+		log.Printf("network adapter %s is disable", name)
+		return []net.Addr{}
+	}
+	// 获取网卡下所有的地址
+	addrs, err := inter.Addrs()
+	if err != nil {
+		log.Printf("network adapter %s doesn't have avaliable address", name)
+		return []net.Addr{}
+	}
+	return addrs
+}
+
+func GetLocalIpv4(name string) string {
+	addrs := GetNetworkAdapterAddr(name)
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				log.Printf("got %s ipv4 addr: %s", name, ipnet.IP.String())
+				return ipnet.IP.String()
+			}
 		}
 	}
+	log.Printf("network adapter %s doesn't have ipv4", name)
+	return ""
+}
+
+func GetLocalIpv6(name string) string {
+	addrs := GetNetworkAdapterAddr(name)
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() == nil {
+				log.Printf("got %s ipv6 addr: %s", name, ipnet.IP.String())
+				return ipnet.IP.String()
+			}
+		}
+	}
+	log.Printf("network adapter %s doesn't have ipv6", name)
 	return ""
 }
 

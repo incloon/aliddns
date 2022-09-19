@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/OpenIoTHub/aliddns/config"
-	"github.com/OpenIoTHub/aliddns/utils"
+	"github.com/incloon/aliddns/config"
+	"github.com/incloon/aliddns/utils"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"github.com/urfave/cli/v2"
 	"log"
@@ -97,6 +97,14 @@ func main() {
 					EnvVars:     []string{"Protocol"},
 					Destination: &config.ConfigModel.Protocol,
 				},
+				&cli.StringFlag{
+					Name:        "name",
+					Aliases:     []string{"n"},
+					Value:       config.ConfigModel.NetworkAdapter,
+					Usage:       "NetworkAdapterName",
+					EnvVars:     []string{"NetworkAdapterName"},
+					Destination: &config.ConfigModel.NetworkAdapter,
+				},
 			},
 			Action: func(c *cli.Context) error {
 				return timerFunction()
@@ -143,17 +151,17 @@ func update() {
 	publicIpv4 := ""
 	publicIpv6 := ""
 	if protocol == "ipv4" || protocol == "all" {
-		publicIpv4 = utils.GetMyPublicIpv4()
-		if publicIpv4 == "" {
-			log.Println("获取自己的IPV4地址失败！")
-			return
+		if config.ConfigModel.NetworkAdapter == "" {
+			publicIpv4 = utils.GetMyPublicIpv4()
+		} else {
+			publicIpv4 = utils.GetLocalIpv4(config.ConfigModel.NetworkAdapter)
 		}
 	}
 	if protocol == "ipv6" || protocol == "all" {
-		publicIpv6 = utils.GetMyPublicIpv6()
-		if publicIpv6 == "" {
-			log.Println("获取自己的IPV6地址失败！你很可能没有ipv6地址\n" +
-				"Ipv6记录将不会被更新，如果你不希望再看见本警告可以在配置文件中将协议(protocol)由`all`改为`ipv4`或者命令执行时带上`-p ipv4`参数")
+		if config.ConfigModel.NetworkAdapter == "" {
+			publicIpv6 = utils.GetMyPublicIpv6()
+		} else {
+			publicIpv6 = utils.GetLocalIpv6(config.ConfigModel.NetworkAdapter)
 		}
 	}
 
@@ -171,7 +179,7 @@ func update() {
 				ipv4Finded = true
 				// 如果域名 IP 与 现在 IP 不一致
 				if sub.Value != publicIpv4 && publicIpv4 != "" {
-					log.Printf("ipv4 与服务器不一致，开始更新， %s->%s", sub.Value, publicIpv4)
+					log.Printf("ipv4 is different with server, update : %s->%s", sub.Value, publicIpv4)
 					// 更新域名绑定的 IP 地址。
 					sub.Value = publicIpv4
 					_ = utils.UpdateSubDomain(&sub)
@@ -180,7 +188,7 @@ func update() {
 				ipv6Finded = true
 				// 如果域名 IP 与 现在 IP 不一致
 				if sub.Value != publicIpv6 && publicIpv6 != "" {
-					log.Printf("ipv6 与服务器不一致，开始更新， %s->%s", sub.Value, publicIpv6)
+					log.Printf("ipv6 is different with server, update : %s->%s", sub.Value, publicIpv6)
 					// 更新域名绑定的 IP 地址。
 					sub.Value = publicIpv6
 					_ = utils.UpdateSubDomain(&sub)
@@ -211,7 +219,7 @@ func update() {
 			Value:      publicIpv4,
 			TTL:        600,
 		}
-		log.Println("未找到 IPv4 记录，现尝试创建一个")
+		log.Println("Not found IPv4 record, try to creat a new record")
 		_ = utils.AddSubDomainRecord(sub)
 	}
 	if !ipv6Finded && (protocol == "ipv6" || protocol == "all") {
@@ -222,11 +230,9 @@ func update() {
 			Value:      publicIpv6,
 			TTL:        600,
 		}
-		log.Println("未找到 IPv6 记录，现尝试创建一个")
+		log.Println("Not found IPv6 record, try to creat a new record")
 		_ = utils.AddSubDomainRecord(sub)
 	}
-
-	log.Println("<<<<<<<<<<<< 域名记录更新成功 >>>>>>>>>>>")
 }
 
 func timerFunction() error {

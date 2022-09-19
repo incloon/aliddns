@@ -20,16 +20,14 @@ builds:
     - amd64
     - arm
     - arm64
-    - mips64
-    - mips64le
-    - mips
-    - mipsle
   gomips:
     - hardfloat
     - softfloat
   ignore:
     - goos: darwin
       goarch: 386
+    - goos: windows
+      goarch: arm64
 archives:
 - replacements:
     darwin: Darwin
@@ -47,72 +45,3 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
-brews:
-  - tap:
-      owner: OpenIoTHub
-      name: homebrew-tap
-    folder: Formula
-    homepage:  http://github.com/OpenIoTHub
-    description: Aliyun ddns service
-    test: |
-      system "#{bin}/aliddns -v"
-scoop:
-  bucket:
-    owner: OpenIoTHub
-    name: scoop-bucket
-  homepage:  http://github.com/OpenIoTHub
-  description: Aliyun ddns service
-  license: MIT
-nfpms:
-  - file_name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}'
-    homepage:  http://github.com/OpenIoTHub
-    description: Aliyun ddns service
-    maintainer: OpenIoTHub <newfarry@126.com>
-    license: MIT
-    vendor: aliddns
-    formats:
-      - deb
-      - rpm
-    scripts:
-      preinstall: "scripts/install_remove/preinstall.sh"
-      postinstall: "scripts/install_remove/postinstall.sh"
-      preremove: "scripts/install_remove/preremove.sh"
-      postremove: "scripts/install_remove/postremove.sh"
-    contents:
-      - src: systemd/**
-        dst: /etc/systemd/system
-      - src: aliddns.yaml
-        dst: /etc/aliddns/aliddns.yaml
-        type: config
-snapcrafts:
-  - name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}'
-    summary: Aliyun ddns service.
-    description: |
-      Aliyun ddns service
-    grade: stable
-#    confinement: classic
-    publish: true
-    apps:
-      aliddns:
-        plugs: ["network", "network-bind"]
-        daemon: simple
-        command: aliddns
-dockers:
-  - image_templates:
-      - 'openiothub/aliddns:{{ .Tag }}'
-      - 'openiothub/aliddns:v{{ .Major }}.{{ .Minor }}'
-      - 'openiothub/aliddns:latest'
-    dockerfile: Dockerfile
-    ids:
-      - aliddns
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--label=com.github.actions.name={{.ProjectName}}"
-
-    extra_files:
-      - scripts/entrypoint.sh
